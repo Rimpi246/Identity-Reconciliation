@@ -52,18 +52,123 @@ app.post("/identify", (req, res) => {
   const emailD = requestData.email;
   const phoneNumberD = requestData.phoneNumber;
 
-  const createInsertQuery = `
-  INSERT INTO Contact(phoneNumber, email ) VALUES ('${phoneNumberD}', '${emailD}')`;
-  connection.query(createInsertQuery, (err, results) => {
-    if (err) {
-      console.error("Error inserting: ", err);
-    } else {
-      console.log("Inserted successfully.");
+  // const createInsertQuery = `
+  // INSERT INTO Contact(phoneNumber, email ) VALUES ('${phoneNumberD}', '${emailD}')`;
+  // connection.query(createInsertQuery, (err, results) => {
+  //   if (err) {
+  //     console.error("Error inserting: ", err);
+  //   } else {
+  //     console.log("Inserted successfully.");
+  //   }
+  // });
+
+  // Check if email already exists in the db
+  connection.query(
+    `SELECT * FROM Contact WHERE email='${emailD}'`,
+    [emailD],
+    (err, results) => {
+      if (err) {
+        console.log("Error occured: ", err);
+      }
+      if (results.length === 0) {
+        // Email doesn't exist, create a new user
+        connection.query(
+          `INSERT INTO Contact(email,  phoneNumber, linkedPrecedence, linkedId) VALUES('${emailD}','${phoneNumberD}', NULL, NULL)`,
+          [emailD, phoneNumberD],
+          (err, result) => {
+            if (err) {
+              console.log("Error inserting new user: ", err);
+            } else console.log("Email doesn't exist, new user created.");
+            // res
+            //   .status(200)
+            //   .json({ message: "Email doesn't exist, new user created." });
+          }
+        );
+      } else {
+        // Email already exists
+        const existingUser = results[0];
+        const oldUserId = existingUser.id;
+        connection.query(
+          `UPDATE Contact SET linkedPrecedence = "Primary" WHERE id = '${oldUserId}'`,
+          [oldUserId],
+          (err, result) => {
+            if (err) {
+              console.log("Error updating user: ", err);
+            } else console.log("Email already exists, old user updated.");
+            connection.query(
+              `INSERT INTO Contact (email, phoneNumber, linkedPrecedence, linkedId) VALUES('${emailD}','${phoneNumberD}',"Secondary", '${oldUserId}')`,
+              [emailD, phoneNumberD, oldUserId],
+              (err, result) => {
+                if (err) {
+                  console.log("Error insrting: ", err);
+                } else console.log("Email already exists, new user created.");
+              }
+            );
+          }
+        );
+      }
     }
-  });
+  );
+
+  // Check if phoneNumber already exists in the database
+  connection.query(
+    `SELECT * FROM Contact WHERE phoneNumber='${phoneNumberD}'`,
+    [phoneNumberD],
+    (err, results) => {
+      if (err) {
+        console.log("Error occured: ", err);
+      }
+      if (results.length === 0) {
+        // Phone Number doesn't exist, create a new user
+        connection.query(
+          `INSERT INTO Contact(email,  phoneNumber, linkedPrecedence, linkedId) VALUES('${emailD}','${phoneNumberD}', NULL, NULL)`,
+          [emailD, phoneNumberD],
+          (err, result) => {
+            if (err) {
+              console.log("Error inserting new user: ", err);
+            } else console.log("Phone Number doesn't exist, new user created.");
+          }
+        );
+      } else {
+        // phone Number already exists
+        const existingUser = results[0];
+        const oldUserId = existingUser.id;
+        connection.query(
+          `UPDATE Contact SET linkedPrecedence = "Primary" WHERE id = '${oldUserId}'`,
+          [oldUserId],
+          (err, result) => {
+            if (err) {
+              console.log("Error updating user: ", err);
+            } else
+              console.log("Phone Number already exists, old user updated.");
+            connection.query(
+              `INSERT INTO Contact (email, phoneNumber, linkedPrecedence, linkedId) VALUES('${emailD}','${phoneNumberD}',"Secondary", '${oldUserId}')`,
+              [emailD, phoneNumberD, oldUserId],
+              (err, result) => {
+                if (err) {
+                  console.log("Error insrting: ", err);
+                } else
+                  console.log("Phone Number already exists, new user created.");
+              }
+            );
+          }
+        );
+      }
+    }
+  );
 
   console.log("Received POST request:", requestData);
   res.json({ message: "POST request received successfully." });
+
+  // const response = {
+  //   "contact":{
+  //     "primaryContactId": ,
+  //     "emails": [],
+  //     "phoneNumbers": [],
+  //     "secondaryContactIds": []
+  //   }
+  // }
+  // res.json(response);
 });
 
 app.listen(port, () => {
